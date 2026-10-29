@@ -22,8 +22,64 @@ const sigilDesigns=[`<path d="M34 13a19 19 0 1 0 17 30 21 21 0 0 1-17-30Z"/><pat
 const ring=document.getElementById('ring'),overlay=document.getElementById('overlay'),portrait=document.getElementById('portrait'),caption=document.getElementById('caption'),actions=document.getElementById('actions');let current;
 characters.forEach((_,i)=>{let b=document.createElement('button');b.className='sigil';const angle=(i*45-90)*Math.PI/180;b.style.left=(50+45*Math.cos(angle))+'%';b.style.top=(50+45*Math.sin(angle))+'%';b.innerHTML='<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28" class="sigil-outer"/>'+sigilDesigns[i]+'</svg>';b.setAttribute('aria-label','魔法陣 '+(i+1));b.onclick=()=>summon(i);ring.appendChild(b)});
 function button(label,fn,cls=''){let b=document.createElement('button');b.className='action '+cls;b.textContent=label;b.onclick=fn;actions.appendChild(b)}
-const lightBurst=document.getElementById('lightBurst');let transitioning=false;
-function burst(color,after){if(transitioning)return;transitioning=true;lightBurst.className='light-burst '+(color==='pink'?'pink':'');void lightBurst.offsetWidth;lightBurst.classList.add('active');setTimeout(()=>{after();},color==='pink'?340:340);setTimeout(()=>{lightBurst.classList.remove('active');transitioning=false},900)}
-function show(n){let c=characters[current];portrait.src='images/'+c[0]+n+'.png';portrait.classList.remove('fade');void portrait.offsetWidth;portrait.classList.add('fade');caption.textContent='✦ '+c[1]+' ✦\n'+(n===1?c[2]:c[3]);actions.replaceChildren();if(n===1){button('もっと彼に近づきたい ♡',()=>burst('pink',()=>show(2)));button('魔法陣に戻る',close,'back')}else{button('もう一度会う ♡',()=>show(1));button('魔法陣に戻る',close,'back')}}
-function summon(i){if(transitioning)return;current=i;ring.style.animationPlayState='paused';burst('white',()=>{overlay.classList.add('show');show(1)})}function close(){if(transitioning)return;overlay.classList.remove('show');ring.style.animationPlayState='running'}
+const lightBurst=document.getElementById('lightBurst');let transitioning=false;let transitionToken=0;
+// 画像を事前に読み込み、前の彼が表示される時間をなくす。
+characters.forEach(c=>[1,2].forEach(n=>{const img=new Image();img.src='images/'+c[0]+n+'.png'}));
+function loadPortrait(src){return new Promise(resolve=>{const img=new Image();img.onload=()=>resolve();img.onerror=()=>resolve();img.src=src;if(img.complete)resolve()})}
+function burst(color,after){
+ if(transitioning)return;
+ transitioning=true;
+ const token=++transitionToken;
+ // 光が強くなるまで、以前の画像やセリフを見せない。
+ overlay.style.visibility='hidden';
+ lightBurst.className='light-burst '+(color==='pink'?'pink':'');
+ void lightBurst.offsetWidth;
+ lightBurst.classList.add('active');
+ setTimeout(async()=>{
+   if(token!==transitionToken)return;
+   await after();
+   if(token!==transitionToken)return;
+   // 新しい画像の読み込み完了後にだけ表示。
+   overlay.style.visibility='visible';
+ },310);
+ setTimeout(()=>{
+   if(token!==transitionToken)return;
+   lightBurst.classList.remove('active');
+   transitioning=false;
+   overlay.style.visibility='visible';
+ },900);
+}
+async function show(n){
+ const c=characters[current];
+ const src='images/'+c[0]+n+'.png';
+ await loadPortrait(src);
+ portrait.src=src;
+ portrait.classList.remove('fade');
+ void portrait.offsetWidth;
+ portrait.classList.add('fade');
+ caption.textContent='✦ '+c[1]+' ✦\n'+(n===1?c[2]:c[3]);
+ actions.replaceChildren();
+ if(n===1){
+  button('もっと彼に近づきたい ♡',()=>burst('pink',()=>show(2)));
+  button('魔法陣に戻る',close,'back');
+ }else{
+  button('もう一度会う ♡',()=>burst('white',()=>show(1)));
+  button('魔法陣に戻る',close,'back');
+ }
+}
+function summon(i){
+ if(transitioning)return;
+ current=i;
+ ring.style.animationPlayState='paused';
+ burst('white',async()=>{await show(1);overlay.classList.add('show')});
+}
+function close(){
+ if(transitioning)return;
+ overlay.classList.remove('show');
+ overlay.style.visibility='visible';
+ portrait.removeAttribute('src');
+ caption.textContent='';
+ actions.replaceChildren();
+ ring.style.animationPlayState='running';
+}
 </script></body></html>
