@@ -7,6 +7,7 @@
 .light-burst.active{visibility:visible;animation:burstLight .85s ease-in-out both}
 @keyframes burstLight{0%{opacity:0;transform:scale(.45)}32%{opacity:.97;transform:scale(1.3)}52%{opacity:.95;transform:scale(1.6)}100%{opacity:0;transform:scale(2)}}
 @media(prefers-reduced-motion:reduce){.light-burst.active{animation:burstLight .25s ease-out both}}
+.overlay.transitioning > *{visibility:hidden}
 </style></head><body><main class="app"><div class="heading">✦ Halloween Magical Summon ✦<div class="sub">魔法陣を選んで、彼を召喚してね</div></div><img class="wizard" src="images/wizard.png" alt="魔法使い"><div class="ring" id="ring"></div><div class="hint">✧ どの彼に出会えるかは、秘密 ✧</div><section class="overlay" id="overlay" aria-live="polite"><img class="portrait" id="portrait" alt="召喚された彼"><div class="caption" id="caption"></div><div id="actions"></div></section><div class="light-burst" id="lightBurst" aria-hidden="true"></div></main><script>
 const characters=[
 ['vampire','ヴァンパイア','……誰の許しを得て、私を呼び出した？','覚悟しなさい。\n今夜は、君を帰すつもりはない。'],
@@ -31,7 +32,7 @@ function burst(color,after){
  transitioning=true;
  const token=++transitionToken;
  // 光が強くなるまで、以前の画像やセリフを見せない。
- overlay.style.visibility='hidden';
+ overlay.classList.add('transitioning');
  lightBurst.className='light-burst '+(color==='pink'?'pink':'');
  void lightBurst.offsetWidth;
  lightBurst.classList.add('active');
@@ -40,13 +41,13 @@ function burst(color,after){
    await after();
    if(token!==transitionToken)return;
    // 新しい画像の読み込み完了後にだけ表示。
-   overlay.style.visibility='visible';
+   overlay.classList.remove('transitioning');
  },310);
  setTimeout(()=>{
    if(token!==transitionToken)return;
    lightBurst.classList.remove('active');
    transitioning=false;
-   overlay.style.visibility='visible';
+   overlay.classList.remove('transitioning');
  },900);
 }
 async function show(n){
@@ -71,12 +72,13 @@ function summon(i){
  if(transitioning)return;
  current=i;
  ring.style.animationPlayState='paused';
- burst('white',async()=>{await show(1);overlay.classList.add('show')});
+ overlay.classList.add('show');
+ burst('white',async()=>{await show(1)});
 }
 function close(){
  if(transitioning)return;
  overlay.classList.remove('show');
- overlay.style.visibility='visible';
+ overlay.classList.remove('transitioning');
  portrait.removeAttribute('src');
  caption.textContent='';
  actions.replaceChildren();
